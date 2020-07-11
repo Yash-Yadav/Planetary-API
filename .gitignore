@@ -1,3 +1,6 @@
+# Files Added by the user
+planets.db
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
