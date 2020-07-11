@@ -59,7 +59,7 @@ def db_seed():
 						email = 'test@test.com',
 						password = 'P@ssw0rd'
 					)
-	db.add(test_user)
+	db.session.add(test_user)
 	
 	db.session.commit()
 	db.session.close()
