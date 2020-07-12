@@ -45,7 +45,7 @@ def db_seed():
 	mercury = Planet(
 						planet_name = 'Mercury',
 						planet_type = 'Class D',
-						planet_star = 'Sol',
+						home_star = 'Sol',
 						mass = 3.258e23,
 						radius = 1516,
 						distance = 35.98e6
@@ -53,7 +53,7 @@ def db_seed():
 	venus = Planet(
 					planet_name = 'Venus',
 					planet_type = 'Class K',
-					planet_star = 'Sol',
+					home_star = 'Sol',
 					mass = 4.867e24,
 					radius = 3760,
 					distance = 67.24e6
@@ -61,7 +61,7 @@ def db_seed():
 	earth = Planet(
 					planet_name = 'Earth',
 					planet_type = 'Class M',
-					planet_star = 'Sol',
+					home_star = 'Sol',
 					mass = 5.972e24,
 					radius = 3959,
 					distance = 92.96e6
@@ -164,6 +164,71 @@ def retrieve_password(email: str):
 	else:
 		return jsonify(message="That email doesn't exist"), 401
 
+@app.route('/planet_details/<int:planet_id>', methods=['GET'])
+def planet_details(planet_id: int):
+	planet = Planet.query.filter_by(planet_id=planet_id).first()
+	if planet:
+		result = planet_schema.dump(planet)
+		return jsonify(result)
+	else:
+		return jsonify(message="That planet doesn't exist."), 404
+
+@app.route('/add_planet', methods=['POST'])
+@jwt_required
+def add_planet():
+	planet_name = request.form.get('planet_name')
+	test = Planet.query.filter_by(planet_name=planet_name).first()
+	if test:
+		return jsonify('There is already a planet by that name'), 409
+	else:
+		planet_type = request.form.get('planet_type')
+		home_star = request.form.get('home_star')
+		mass = float(request.form.get('mass'))
+		radius = float(request.form.get('radius'))
+		distance = float(request.form.get('distance'))
+
+		new_planet = Planet(
+								planet_name=planet_name,
+								planet_type=planet_type,
+								home_star=home_star,
+								mass=mass,
+								radius=radius,
+								distance=distance
+							)
+		db.session.add(new_planet)
+		db.session.commit()
+		db.session.close()
+		return jsonify(message="You've added a planet"), 201
+
+@app.route('/update_planet', methods=['PUT'])
+@jwt_required
+def update_planet():
+	planet_id = int(request.form.get('planet_id'))
+	planet = Planet.query.filter_by(planet_id=planet_id).first()
+	if planet:
+		planet.planet_name = request.form.get('planet_name')
+		planet.planet_type = request.form.get('planet_type')
+		planet.home_star = request.form.get('home_star')
+		planet.mass = float(request.form.get('mass'))
+		planet.radius = float(request.form.get('radius'))
+		planet.distance = float(request.form.get('distance'))
+
+		db.session.commit()
+		return jsonify(message="You've updated the planet."), 202
+	else:
+		return jsonify(message="That planet doesn't exists."), 404
+
+@app.route('/remove_planet/<int:planet_id>', methods=['DELETE'])
+@jwt_required
+def remove_planet(planet_id: int):
+	planet = Planet.query.filter_by(planet_id=planet_id).first()
+	if planet:
+		db.session.delete(planet)
+		db.session.commit()
+		return jsonify(message="You've deleted the planet."), 202
+	else:
+		return jsonify(message="That planet doesn't exist."), 404
+
 
 # Database Models
 class User(db.Model):
@@ -179,7 +244,7 @@ class Planet(db.Model):
 	planet_id = Column(Integer, primary_key=True)
 	planet_name = Column(String)
 	planet_type = Column(String)
-	planet_star = Column(String)
+	home_star = Column(String)
 	mass = Column(Float)
 	radius = Column(Float)
 	distance = Column(Float)
