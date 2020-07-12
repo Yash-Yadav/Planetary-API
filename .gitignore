@@ -1,5 +1,6 @@
 # Files Added by the user
 planets.db
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

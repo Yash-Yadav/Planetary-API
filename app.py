@@ -2,16 +2,19 @@ from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Column, Integer, String, Float
 from flask_marshmallow import Marshmallow
+from flask_jwt_extended import JWTManager, jwt_required, create_access_token
 import os
 
 
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'+ os.path.join(basedir, 'planets.db')
+app.config['JWT_SECRET_KEY'] = 'super-secret' # change this IRL
 
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
+jwt = JWTManager(app)
 
 @app.cli.command('db_create')
 def db_create():
@@ -100,7 +103,41 @@ def urlvar(name: str, age: int):
 @app.route('/planets', methods=['GET'])
 def planets():
 	planets_list = Planet.query.all()
-	return jsonify(data=planets_list)
+	result = planets_schema.dump(planets_list)
+	return jsonify(result)
+
+@app.route('/register', methods=['POST'])
+def register():
+	email = request.form.get('email')
+	test = User.query.filter_by(email=email).first()
+	if test:
+		return jsonify(message='That Email already exists.'), 409
+	else:
+		first_name = request.form.get('first_name')
+		last_name = request.form.get('last_name')
+		password = request.form.get('password')
+		user = User(first_name=first_name, last_name=last_name, email=email, password=password)
+		db.session.add(user)
+		db.session.commit()
+		db.session.close()
+		return jsonify(message='User created Successfully.'), 201
+
+@app.route('/login', methods=['POST'])
+def login():
+	if request.is_json:
+		email = request.json.get('email')
+		password = request.json.get('password')
+	else:
+		email = request.form.get('email')
+	
+		password = request.form.get('password')
+	test = User.query.filter_by(email=email, password=password).first()
+	if test:
+		access_token = create_access_token(identity=email)
+		return jsonify(message='Login succeeded!', access_token=access_token)
+	else:
+		return jsonify(message='Bad email or password'), 401
+
 
 # Database Models
 class User(db.Model):
@@ -128,6 +165,12 @@ class UserSchema(ma.Schema):
 class PlanetSchema(ma.Schema):
 	class Meta:
 		fields = ('planet_id', 'planet_name', 'planet_type', 'home_star', 'mass', 'radius', 'distance')
+
+user_schema = UserSchema()
+users_schema = UserSchema(many=True)
+
+planet_schema = PlanetSchema()
+planets_schema = PlanetSchema(many=True)
 
 if __name__ == '__main__':
 	app.run(debug=True)
